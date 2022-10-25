@@ -80,7 +80,7 @@ def train(args):
 
     summary_path="../runs/{}".format(args.checkpoint_dir.split('/')[-2])
     writer = SummaryWriter("../runs/{}".format(args.checkpoint_dir.split('/')[-2]))
-    print(summary_path)
+    # print(summary_path)
     if os.path.exists(summary_path) is False:
         os.makedirs(summary_path)
 
@@ -149,7 +149,6 @@ def train(args):
             #                            mode="bilinear")
 
             assert (images.shape == images_hat.shape)
-            # print(images.shape)
             optimizer.zero_grad()
             with torch.cuda.amp.autocast(enabled=args.fp16):
                 outputs = model(images.to(device),images_hat.to(device),training=True)
@@ -164,36 +163,35 @@ def train(args):
                                         match_target=matches,
                                         k=args.K,
                                         device=device)
-
             # Backprop
             scaler.scale(loss_dict['loss']).backward()
             scaler.step(optimizer)
             scaler.update()
 
             ## rotate grids for tensorboard
-            images_tb=torch.transpose(images, 2, 4)
-            images_hat_tb = torch.transpose(images_hat, 2, 4)
-            prostate_mask_tb = torch.transpose(prostate_mask, 2, 4)
-            images_tb = torch.flip(images_tb, [3, 4])
-            images_hat_tb = torch.flip(images_hat_tb, [3, 4])
-            prostate_mask_tb = torch.flip(prostate_mask_tb, [3, 4])
-
-            ## visualize patches
-            img_grid0 = torchvision.utils.make_grid(images_tb[0, 0, args.patch_size[2] // 2, :, :])
-            img_grid1 = torchvision.utils.make_grid(prostate_mask_tb[0, 0, args.patch_size[2] // 2, :, :])
-            img_grid2 = torchvision.utils.make_grid(images_hat_tb[0, 0, args.patch_size[2] // 2, :, :])
-            writer.add_image('Training/img1_orig', img_grid0, n_iter)
-            writer.add_image('Training/prostate_mask', img_grid1, n_iter)
-            writer.add_image('Training/img2_deform', img_grid2, n_iter)
+            # images_tb=torch.transpose(images, 2, 4)
+            # images_hat_tb = torch.transpose(images_hat, 2, 4)
+            # prostate_mask_tb = torch.transpose(prostate_mask, 2, 4)
+            # images_tb = torch.flip(images_tb, [3, 4])
+            # images_hat_tb = torch.flip(images_hat_tb, [3, 4])
+            # prostate_mask_tb = torch.flip(prostate_mask_tb, [3, 4])
+            #
+            # ## visualize patches
+            # img_grid0 = torchvision.utils.make_grid(images_tb[0, 0, args.patch_size[2] // 2, :, :])
+            # img_grid1 = torchvision.utils.make_grid(prostate_mask_tb[0, 0, args.patch_size[2] // 2, :, :])
+            # img_grid2 = torchvision.utils.make_grid(images_hat_tb[0, 0, args.patch_size[2] // 2, :, :])
+            # writer.add_image('Training/img1_orig', img_grid0, n_iter)
+            # writer.add_image('Training/prostate_mask', img_grid1, n_iter)
+            # writer.add_image('Training/img2_deform', img_grid2, n_iter)
 
             # save patches in debug mode
-            if args.debug:
-                sitk.WriteImage(sitk.GetImageFromArray(images_tb[0, 0, :, :, :].detach().numpy()),
-                                'debug/output/img{}_{}.gipl'.format(epoch, batch_idx))
-                sitk.WriteImage(sitk.GetImageFromArray(images_hat_tb[0, 0, :, :, :].detach().numpy()),
-                                'debug/output/deform_{}_{}.gipl'.format(epoch, batch_idx))
-                # sitk.WriteImage(sitk.GetImageFromArray(prostate_mask_tb[0, 0, :, :, :].detach().numpy()),
-                #                 'debug/output/prostate_mask_{}_{}.gipl'.format(epoch, batch_idx))
+            # if args.debug:
+            #     sitk.WriteImage(sitk.GetImageFromArray(images_tb[0, 0, :, :, :].detach().numpy()),
+            #                     'debug/output/img{}_{}.gipl'.format(epoch, batch_idx))
+            #     sitk.WriteImage(sitk.GetImageFromArray(images_hat_tb[0, 0, :, :, :].detach().numpy()),
+            #                     'debug/output/deform_{}_{}.gipl'.format(epoch, batch_idx))
+            #     # sitk.WriteImage(sitk.GetImageFromArray(prostate_mask_tb[0, 0, :, :, :].detach().numpy()),
+            #     #                 'debug/output/prostate_mask_{}_{}.gipl'.format(epoch, batch_idx))
 
             pbar.set_postfix({'Training loss': loss_dict['loss'].item()})
             writer.add_scalar('train/loss', loss_dict['loss'].item(), n_iter)
@@ -201,12 +199,8 @@ def train(args):
             writer.add_scalar('train/landmark_2_loss', loss_dict['landmark_2_loss'].item(), n_iter)
             writer.add_scalar('train/desc_loss_ce', loss_dict['desc_loss_ce'].item(), n_iter)
             writer.add_scalar('train/desc_loss_hinge', loss_dict['desc_loss_hinge'].item(), n_iter)
-            # writer.add_scalar('train/desc_loss_hinge_pos', loss_dict['desc_loss_hinge_pos'].item(), n_iter)
-            # writer.add_scalar('train/desc_loss_hinge_neg', loss_dict['desc_loss_hinge_neg'].item(), n_iter)
-            # writer.add_scalar('train/matches', num_matches, n_iter)
-            # writer.add_scalar('train/K', args.K, n_iter)
-            n_iter += 1
 
+            n_iter += 1
 
         print('EPOCH {} done'.format(epoch))
 
@@ -232,7 +226,6 @@ def train(args):
                 #                            mode="bilinear")
 
                 assert (images.shape == images_hat.shape)
-                # print(images.shape,images_hat.shape)
                 outputs = model(images.to(device),images_hat.to(device),training=True)
                 gt1, gt2, matches = get_labels(pts1=outputs['kpt_sampling_grid'][0],pts2=outputs['kpt_sampling_grid'][1],deformation=batch_deformation_grid)
                 loss_dict = custom_loss(landmark_logits1=outputs['kpt_logits'][0],
@@ -247,7 +240,6 @@ def train(args):
 
                 # visualize
                 landmarks1, landmarks2, true_matches = model.predict(images.to(device), images_hat.to(device))
-                # print(images.shape,output1.shape)
                 for i in range(images.shape[0]):
                     im1 = images[i, 0, :, :, :].to("cpu").numpy()
                     im2 = images_hat[i, 0, :, :, :].to("cpu").numpy()
@@ -257,18 +249,18 @@ def train(args):
                     found_matches = visualize_keypoints(im1.copy(), im2.copy(), landmarks1, landmarks2, mask, out_dir="../results/{}/".format(args.checkpoint_dir.split('/')[-2]), base_name="iter_{}".format(n_iter_val))
 
                 ## rotate grids for tensorboard
-                images_tb = torch.transpose(images, 2, 4)
-                images_hat_tb = torch.transpose(images_hat, 2, 4)
-                prostate_mask_tb = torch.transpose(prostate_mask, 2, 4)
-                images_tb = torch.flip(images_tb, [3, 4])
-                images_hat_tb = torch.flip(images_hat_tb, [3, 4])
-                prostate_mask_tb = torch.flip(prostate_mask_tb, [3, 4])
-                img_grid0 = torchvision.utils.make_grid(images_tb[0, 0, args.patch_size[2] // 2, :, :])
-                img_grid1 = torchvision.utils.make_grid(prostate_mask_tb[0, 0, args.patch_size[2] // 2, :, :])
-                img_grid2 = torchvision.utils.make_grid(images_hat_tb[0, 0, args.patch_size[2] // 2, :, :])
-                writer.add_image('val/img1_orig', img_grid0, n_iter_val)
-                writer.add_image('val/prostate_mask', img_grid1, n_iter_val)
-                writer.add_image('val/img2_deform', img_grid2, n_iter_val)
+                # images_tb = torch.transpose(images, 2, 4)
+                # images_hat_tb = torch.transpose(images_hat, 2, 4)
+                # prostate_mask_tb = torch.transpose(prostate_mask, 2, 4)
+                # images_tb = torch.flip(images_tb, [3, 4])
+                # images_hat_tb = torch.flip(images_hat_tb, [3, 4])
+                # prostate_mask_tb = torch.flip(prostate_mask_tb, [3, 4])
+                # img_grid0 = torchvision.utils.make_grid(images_tb[0, 0, args.patch_size[2] // 2, :, :])
+                # img_grid1 = torchvision.utils.make_grid(prostate_mask_tb[0, 0, args.patch_size[2] // 2, :, :])
+                # img_grid2 = torchvision.utils.make_grid(images_hat_tb[0, 0, args.patch_size[2] // 2, :, :])
+                # writer.add_image('val/img1_orig', img_grid0, n_iter_val)
+                # writer.add_image('val/prostate_mask', img_grid1, n_iter_val)
+                # writer.add_image('val/img2_deform', img_grid2, n_iter_val)
                 writer.add_scalar('val/loss', loss_dict['loss'].item(), n_iter_val)
                 writer.add_scalar('val/landmark_1_loss', loss_dict['landmark_1_loss'].item(), n_iter_val)
                 writer.add_scalar('val/landmark_2_loss', loss_dict['landmark_2_loss'].item(), n_iter_val)
@@ -319,6 +311,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     pz=list(args.patch_size)
-    # print(pz)
-    # print("Using patch size: ", pz)
     train(args)
